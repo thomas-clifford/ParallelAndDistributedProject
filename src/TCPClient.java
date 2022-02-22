@@ -58,6 +58,7 @@ public class TCPClient {
             times.get(filename).add(totalTime);
             System.out.println("Total Transfer Time: " + totalTime + " milliseconds\n");
             socket.close();
+            iteration++;
         }
         createCsvFile(times);
     }
@@ -117,11 +118,11 @@ public class TCPClient {
      * @return an array with the PrintWriter at index 0 and the BufferedReader at index 1
      */
     public static Object[] handshake(Socket socket, String client, String server) throws IOException {
-        PrintWriter toServerRouter = null;
-        BufferedReader fromServerRouter = null;
+        DataOutputStream toServerRouter = null;
+        DataInputStream fromServerRouter = null;
         try {
-            toServerRouter = new PrintWriter(socket.getOutputStream(), true);
-            fromServerRouter = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            toServerRouter = new DataOutputStream(socket.getOutputStream());
+            fromServerRouter = new DataInputStream(socket.getInputStream());
         } catch (UnknownHostException e) {
             System.err.println("Don't know about router: " + socket.getLocalAddress().getHostAddress());
             System.exit(1);
@@ -131,10 +132,19 @@ public class TCPClient {
         }
 
         // Initial communication with the ServerRouter. This just confirms the connection.
-        toServerRouter.println(server);
-        String fromServer = fromServerRouter.readLine();
+        byte[] serverName = server.getBytes();
+        toServerRouter.writeInt(serverName.length);
+        toServerRouter.write(serverName);
+
+        int serverResponseLength = fromServerRouter.readInt();
+        byte[] serverResponse = new byte[serverResponseLength];
+        fromServerRouter.readFully(serverResponse, 0, serverResponseLength);
+        String fromServer = new String(serverResponse);
         System.out.println("Message from ServerRouter: " + fromServer);
-        toServerRouter.println(client);
+
+        byte[] clientName = client.getBytes();
+        toServerRouter.writeInt(clientName.length);
+        toServerRouter.write(clientName);
 
         return new Object[]{toServerRouter, fromServerRouter};
     }
@@ -154,21 +164,40 @@ public class TCPClient {
 
         // Writers and readers for sending messages to and from the ServerRouter
         Object[] writerAndReader = handshake(socket, client, server);
-        PrintWriter toServerRouter = (PrintWriter) writerAndReader[0];
-        BufferedReader fromServerRouter = (BufferedReader) writerAndReader[1];
+        DataOutputStream toServerRouter = (DataOutputStream) writerAndReader[0];
+        DataInputStream fromServerRouter = (DataInputStream) writerAndReader[1];
         String fromServer;
 
-        // Send the contents of the text file to the ServerRouter line by line. Receive the response as well.
-        while ((fromServer = fromServerRouter.readLine()) != null) {
-            System.out.println("Server: " + fromServer);
-            String fromClient = fromFile.readLine();
-            if (fromClient == null) {
-                toServerRouter.println("Bye.");
-                break;
-            }
-            System.out.println("Client: " + fromClient);
-            toServerRouter.println(fromClient);
-        }
+        int serverResponseLength = fromServerRouter.readInt();
+        byte[] serverResponse = new byte[serverResponseLength];
+        fromServerRouter.readFully(serverResponse, 0, serverResponseLength);
+        fromServer = new String(serverResponse);
+
+        System.out.println("Server: " + fromServer);
+
+        FileInputStream fileInputStream = new FileInputStream(currentFile.getAbsolutePath());
+
+        String fileName = currentFile.getName();
+        byte[] fileNameBytes = fileName.getBytes();
+
+        byte[] fileContentBytes = new byte[(int)currentFile.length()];
+        fileInputStream.read(fileContentBytes);
+
+        System.out.println("Client: " + new String(fileContentBytes));
+
+        toServerRouter.writeInt(fileNameBytes.length);
+        toServerRouter.write(fileNameBytes);
+
+        toServerRouter.writeInt(fileContentBytes.length);
+        toServerRouter.write(fileContentBytes);
+
+        serverResponseLength = fromServerRouter.readInt();
+        serverResponse = new byte[serverResponseLength];
+        fromServerRouter.readFully(serverResponse, 0, serverResponseLength);
+        fromServer = new String(serverResponse);
+
+        System.out.println("Server: " + fromServer);
+
         toServerRouter.close();
         fromServerRouter.close();
     }
@@ -184,34 +213,43 @@ public class TCPClient {
      * @throws IOException if handshake fails between client and server.
      */
     public static void startWavFileSession(Socket socket, String client, String server, File currentFile) throws IOException {
-        handshake(socket, client, server);
-        BufferedInputStream inputStream;
-        try {
-            if (socket.isConnected()) {
-                inputStream = new BufferedInputStream(socket.getInputStream());
-                AudioInputStream ais = AudioSystem.getAudioInputStream(inputStream);
-                try {
-                    AudioSystem.write(ais, AudioFileFormat.Type.WAVE, currentFile);
-                }
-                catch(Exception e) {
-                    e.printStackTrace();
-                }
-                // IF YOU WANT TO PLAY SOUND DIRECTLY FROM SPEAKERS COMMENT OUT THE TRY CATCH BLOCK ABOVE
-                //  AND UNCOMMENT THE BELOW SECTION
-//                Clip clip = AudioSystem.getClip();
-//                clip.open(ais);
-//                clip.start();
-//
-//                while (inputStream != null) {
-//                    if (clip.isActive()) {
-//                        System.out.println("********** Buffred *********" + inputStream.available());
-//                    }
-//                }
-            }
+        // Writers and readers for sending messages to and from the ServerRouter
+        Object[] writerAndReader = handshake(socket, client, server);
+        DataOutputStream toServerRouter = (DataOutputStream) writerAndReader[0];
+        DataInputStream fromServerRouter = (DataInputStream) writerAndReader[1];
+        String fromServer;
 
-        } catch (UnsupportedAudioFileException e) {
-            System.err.println(e);
-        }
+        int serverResponseLength = fromServerRouter.readInt();
+        byte[] serverResponse = new byte[serverResponseLength];
+        fromServerRouter.readFully(serverResponse, 0, serverResponseLength);
+        fromServer = new String(serverResponse);
+
+        System.out.println("Server: " + fromServer);
+
+        FileInputStream fileInputStream = new FileInputStream(currentFile.getAbsolutePath());
+
+        String fileName = currentFile.getName();
+        byte[] fileNameBytes = fileName.getBytes();
+
+        byte[] fileContentBytes = new byte[(int)currentFile.length()];
+        fileInputStream.read(fileContentBytes);
+
+        toServerRouter.writeInt(fileNameBytes.length);
+        toServerRouter.write(fileNameBytes);
+
+        toServerRouter.writeInt(fileContentBytes.length);
+        toServerRouter.write(fileContentBytes);
+
+        serverResponseLength = fromServerRouter.readInt();
+        serverResponse = new byte[serverResponseLength];
+        fromServerRouter.readFully(serverResponse, 0, serverResponseLength);
+        fromServer = new String(serverResponse);
+
+        System.out.println("Server: " + fromServer);
+
+        toServerRouter.close();
+        fromServerRouter.close();
+
     }
 
     /**
@@ -225,7 +263,43 @@ public class TCPClient {
      * @throws IOException if handshake fails between client and server.
      */
     public static void startMp4FileSession(Socket socket, String client, String server, File currentFile) throws IOException {
-        handshake(socket, client, server);
+        // Writers and readers for sending messages to and from the ServerRouter
+        Object[] writerAndReader = handshake(socket, client, server);
+        DataOutputStream toServerRouter = (DataOutputStream) writerAndReader[0];
+        DataInputStream fromServerRouter = (DataInputStream) writerAndReader[1];
+        String fromServer;
+
+        int serverResponseLength = fromServerRouter.readInt();
+        byte[] serverResponse = new byte[serverResponseLength];
+        fromServerRouter.readFully(serverResponse, 0, serverResponseLength);
+        fromServer = new String(serverResponse);
+
+        System.out.println("Server: " + fromServer);
+
+        FileInputStream fileInputStream = new FileInputStream(currentFile.getAbsolutePath());
+
+        String fileName = currentFile.getName();
+        byte[] fileNameBytes = fileName.getBytes();
+
+        byte[] fileContentBytes = new byte[(int)currentFile.length()];
+        fileInputStream.read(fileContentBytes);
+
+        toServerRouter.writeInt(fileNameBytes.length);
+        toServerRouter.write(fileNameBytes);
+
+        toServerRouter.writeInt(fileContentBytes.length);
+        toServerRouter.write(fileContentBytes);
+
+        serverResponseLength = fromServerRouter.readInt();
+        serverResponse = new byte[serverResponseLength];
+        fromServerRouter.readFully(serverResponse, 0, serverResponseLength);
+        fromServer = new String(serverResponse);
+
+        System.out.println("Server: " + fromServer);
+
+        toServerRouter.close();
+        fromServerRouter.close();
+
 
     }
 }

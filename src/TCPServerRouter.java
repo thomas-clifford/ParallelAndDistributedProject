@@ -4,7 +4,7 @@ import java.net.Socket;
 
 public class TCPServerRouter {
     public static void main(String[] args) throws IOException {
-        Object [][] RoutingTable = new Object [10][2]; // routing table
+        Object [][] routingTable = new Object [10000][2]; // routing table
         int routerIndex = 0; // index in the routing table
 
         Socket clientSocket = null; // socket for the thread
@@ -22,7 +22,7 @@ public class TCPServerRouter {
         while (true) {
             try {
                 clientSocket = serverSocket.accept();
-                SThread clientThread = new SThread(RoutingTable, clientSocket, routerIndex); // creates a thread with a random port
+                SThread clientThread = new SThread(routingTable, clientSocket, routerIndex); // creates a thread with a random port
                 clientThread.start(); // starts the thread
                 routerIndex++; // increments the index
                 System.out.println("ServerRouter connected with Client/Server: " + clientSocket.getInetAddress().getHostAddress());

@@ -2,19 +2,19 @@ import java.io.*;
 import java.net.*;
 import java.lang.Exception;
 
-	
+
 public class SThread extends Thread {
 	private Object [][] routingTable; // routing table
-	private PrintWriter out, outTo; // writers (for writing back to the machine and to destination)
-	private BufferedReader in; // reader (for reading from the machine connected to)
+	private DataOutputStream out, outTo; // writers (for writing back to the machine and to destination)
+	private DataInputStream in; // reader (for reading from the machine connected to)
 	private String inputLine, outputLine, destination, addr; // communication strings
 	private Socket outSocket; // socket for communicating with a destination
 	private int ind; // index in the routing table
 
 	// Constructor
 	SThread(Object [][] Table, Socket toClient, int index) throws IOException {
-		out = new PrintWriter(toClient.getOutputStream(), true);
-		in = new BufferedReader(new InputStreamReader(toClient.getInputStream()));
+		out = new DataOutputStream(toClient.getOutputStream());
+		in = new DataInputStream(toClient.getInputStream());
 		routingTable = Table;
 		addr = toClient.getInetAddress().getHostAddress();
 		routingTable[index][0] = addr; // IP addresses
@@ -26,9 +26,14 @@ public class SThread extends Thread {
 	public void run() {
 		try {
 			// Initial sends/receives
-			destination = in.readLine(); // initial read (the destination for writing)
+			int destinationLength = in.readInt();
+			byte[] destinationBytes = new byte[destinationLength];
+			in.readFully(destinationBytes, 0, destinationLength);
+			destination = new String(destinationBytes); // initial read (the destination for writing)
 			System.out.println("Forwarding to " + destination);
-			out.println("Connected to the router."); // confirmation of connection
+			String confirmationMessage = "Connected to the router.";
+			out.writeInt(confirmationMessage.length()); // confirmation of connection
+			out.write(confirmationMessage.getBytes());
 
 			// waits 10 seconds to let the routing table fill with all machines' information
 			try{
@@ -42,22 +47,34 @@ public class SThread extends Thread {
 				if (destination.equals((String) routingTable[i][0])){
 					outSocket = (Socket) routingTable[i][1]; // gets the socket for communication from the table
 					System.out.println("Found destination: " + destination);
-					outTo = new PrintWriter(outSocket.getOutputStream(), true); // assigns a writer
+					outTo = new DataOutputStream(outSocket.getOutputStream()); // assigns a writer
 				}
 			}
-
-			// Communication loop
-			while ((inputLine = in.readLine()) != null) {
-				System.out.println("Client/Server said: " + inputLine);
-
-				outputLine = inputLine; // passes the input from the machine to the output string for the destination
-
-				if ( outSocket != null){
-					outTo.println(outputLine); // writes to the destination
+			int messageLength;
+			do {
+				try {
+					boolean isTextFile = false;
+					messageLength = in.readInt();
+					byte[] message = new byte[messageLength];
+					in.readFully(message, 0, messageLength);
+					String messageStr = new String(message);
+					if (messageStr.contains(".") && !messageStr.substring(messageStr.lastIndexOf('.')).equals(".txt")) {
+						isTextFile = true;
+					}
+					if (!isTextFile) {
+						System.out.println("Client/Server said: " + messageStr);
+					}
+					outTo.writeInt(messageLength);
+					outTo.write(message, 0, messageLength);
+				} catch (EOFException e) {
+					break;
 				}
-			}
+
+			} while(messageLength > 0);
+
+
 		} catch (IOException e) {
-			System.err.println("Could not listen to socket.");
+			e.printStackTrace();
 			System.exit(1);
 		}
 	}
