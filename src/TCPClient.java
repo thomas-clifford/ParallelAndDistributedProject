@@ -4,21 +4,32 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class TCPClient {
     public static void main(String[] args) throws IOException {
         // Default socket information for TCP connection
         Socket socket = null;
         String client = InetAddress.getLocalHost().getHostAddress();
-        String serverRouterIP = "10.0.0.116";
+        String serverRouterIP = "10.0.0.9";
         String serverIP = "10.0.0.114";
         int port = 5555;
 
+        // Variables for recording times in a csv
+        HashMap<String, ArrayList<Long>> times = new HashMap<>();
+
         // For every file sent to the ServerRouter, connect to ServerRouter, send message, and close connection.
         ArrayList<String> filesToSend = getFilesToSend();
+        int iteration = 1;
         for (String filename : filesToSend) {
+            System.out.println("Iteration: " + iteration);
+            if (!times.containsKey(filename)) {
+                times.put(filename, new ArrayList<Long>());
+            }
+            ArrayList<Long> timesForFile = new ArrayList<>();
             // Current file to be sent to the ServerRouter
-            File currentFile = new File(filename);
+            File currentFile = new File("testFiles/" + filename);
 
             // Connect to the ServerRouter through a Socket. Also, establish a writer and reader between the ServerRouter
             try {
@@ -44,9 +55,11 @@ public class TCPClient {
                 startMp4FileSession(socket, client, serverIP, currentFile);
             }
             long totalTime = System.currentTimeMillis() - start;
+            times.get(filename).add(totalTime);
             System.out.println("Total Transfer Time: " + totalTime + " milliseconds\n");
             socket.close();
         }
+        createCsvFile(times);
     }
 
     /**
@@ -71,6 +84,26 @@ public class TCPClient {
             System.err.println("Unable to get files to send from file: " + filename);
         }
         return fileList;
+    }
+
+    /**
+     * Creates a csv file with the times organized by filename.
+     * @param times
+     */
+    public static void createCsvFile(HashMap<String, ArrayList<Long>> times) throws IOException {
+        String fileContents = "";
+        String currentLine = "";
+        for (Map.Entry<String, ArrayList<Long>> entry : times.entrySet()) {
+            currentLine = entry.getKey() + ",";
+            for (long time : entry.getValue()) {
+                currentLine += time + ",";
+            }
+            fileContents += currentLine.substring(0, currentLine.length() - 1) + "\n";
+            currentLine = "";
+        }
+        FileWriter writer = new FileWriter(new File("timesCsv.csv"));
+        writer.write(fileContents);
+        writer.close();
     }
 
     /**
