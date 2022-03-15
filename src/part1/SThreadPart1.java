@@ -1,9 +1,11 @@
+package part1;
+
 import java.io.*;
 import java.net.*;
 import java.lang.Exception;
 
 
-public class SThread extends Thread {
+public class SThreadPart1 extends Thread {
 	private Object [][] routingTable; // routing table
 	private DataOutputStream out, outTo; // writers (for writing back to the machine and to destination)
 	private DataInputStream in; // reader (for reading from the machine connected to)
@@ -12,7 +14,7 @@ public class SThread extends Thread {
 	private int ind; // index in the routing table
 
 	// Constructor
-	SThread(Object [][] Table, Socket toClient, int index) throws IOException {
+	SThreadPart1(Object [][] Table, Socket toClient, int index) throws IOException {
 		out = new DataOutputStream(toClient.getOutputStream());
 		in = new DataInputStream(toClient.getInputStream());
 		routingTable = Table;

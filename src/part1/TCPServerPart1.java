@@ -1,10 +1,9 @@
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
+package part1;
+
 import java.io.*;
 import java.net.*;
 
-public class TCPServer {
+public class TCPServerPart1 {
     public static void main(String[] args) throws IOException {
         // Basic socket information for TCP connection
         Socket socket = null;
@@ -85,6 +84,7 @@ public class TCPServer {
             toServerRouter.close();
             fromServerRouter.close();
             socket.close();
+            System.out.println();
         }
     }
 }

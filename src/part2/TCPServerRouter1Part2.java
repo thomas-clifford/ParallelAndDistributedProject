@@ -1,8 +1,10 @@
+package part2;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class TCPServerRouter {
+public class TCPServerRouter1Part2 {
     public static void main(String[] args) throws IOException {
         Object [][] routingTable = new Object [10000][2]; // routing table
         int routerIndex = 0; // index in the routing table
@@ -22,7 +24,7 @@ public class TCPServerRouter {
         while (true) {
             try {
                 clientSocket = serverSocket.accept();
-                SThread clientThread = new SThread(routingTable, clientSocket, routerIndex); // creates a thread with a random port
+                SThreadPart2 clientThread = new SThreadPart2(routingTable, clientSocket, routerIndex); // creates a thread with a random port
                 clientThread.start(); // starts the thread
                 routerIndex++; // increments the index
                 System.out.println("ServerRouter connected with Client/Server: " + clientSocket.getInetAddress().getHostAddress());

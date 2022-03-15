@@ -1,4 +1,5 @@
-import javax.sound.sampled.*;
+package part2;
+
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -7,7 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class TCPClient {
+public class TCPClientPart2 {
     public static void main(String[] args) throws IOException {
         // Default socket information for TCP connection
         Socket socket = null;
