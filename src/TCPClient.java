@@ -12,7 +12,7 @@ public class TCPClient {
         // Default socket information for TCP connection
         Socket socket = null;
         String client = InetAddress.getLocalHost().getHostAddress();
-        String serverRouterIP = "10.0.0.9";
+        String serverRouterIP = "10.0.0.116";
         String serverIP = "10.0.0.114";
         int port = 5555;
 
@@ -45,14 +45,14 @@ public class TCPClient {
             // Begin sending the file's data to the ServerRouter. The returned value should depend on the type of the file.
             long start = System.currentTimeMillis();
             if (filename.contains(".txt")) {
-                System.out.println("Sending contents of " + filename + " to ServerRouter to convert to uppercase.");
-                startTextFileSession(socket, client, serverIP, currentFile);
+                System.out.println("Sending contents of " + filename + " to ServerRouter to download and return the message in uppercase.");
+                executeTCPConnection(socket, client, serverIP, currentFile);
             } else if (filename.contains(".wav")) {
-                System.out.println("Sending file, " + filename + " to ServerRouter to playback the audio and return a success message");
-                startWavFileSession(socket, client, serverIP, currentFile);
+                System.out.println("Sending file, " + filename + " to ServerRouter to download and return a success message");
+                executeTCPConnection(socket, client, serverIP, currentFile);
             } else if (filename.contains(".mp4")) {
-                System.out.println("Sending file, " + filename + " to ServerRouter to playback the video and return a success message");
-                startMp4FileSession(socket, client, serverIP, currentFile);
+                System.out.println("Sending file, " + filename + " to ServerRouter to download and return a success message");
+                executeTCPConnection(socket, client, serverIP, currentFile);
             }
             long totalTime = System.currentTimeMillis() - start;
             times.get(filename).add(totalTime);
@@ -150,18 +150,16 @@ public class TCPClient {
     }
 
     /**
-     * Begins sending information to the ServerRouter through a PrintWriter. Accepts information from the ServerRouter
-     * through a BufferedReader.
+     * Completes a TCP Connection with the ServerRouter. Begins with a handshake, receives a confirmation message,
+     * sends data from the file, and receives a response.
      *
      * @param socket the socket that connects the client to the ServerRouter
      * @param client the IP of the client (the device running this program)
-     * @param server the IP of the server (the device converting the text to uppercase)
-     * @param currentFile the file that is sent to the server line by line
+     * @param server the IP of the server (the device operating on the file)
+     * @param currentFile the file that is sent to the server through an input stream
      * @throws IOException if handshake fails between client and server.
      */
-    public static void startTextFileSession(Socket socket, String client, String server, File currentFile) throws IOException {
-        BufferedReader fromFile = new BufferedReader(new FileReader(currentFile));
-
+    public static void executeTCPConnection(Socket socket, String client, String server, File currentFile) throws IOException {
         // Writers and readers for sending messages to and from the ServerRouter
         Object[] writerAndReader = handshake(socket, client, server);
         DataOutputStream toServerRouter = (DataOutputStream) writerAndReader[0];
@@ -183,7 +181,9 @@ public class TCPClient {
         byte[] fileContentBytes = new byte[(int)currentFile.length()];
         fileInputStream.read(fileContentBytes);
 
-        System.out.println("Client: " + new String(fileContentBytes));
+        if (fileName.substring(fileName.lastIndexOf('.')).equals(".txt")) {
+            System.out.println("Client: " + new String(fileContentBytes));
+        }
 
         toServerRouter.writeInt(fileNameBytes.length);
         toServerRouter.write(fileNameBytes);
@@ -200,106 +200,5 @@ public class TCPClient {
 
         toServerRouter.close();
         fromServerRouter.close();
-    }
-
-    /**
-     * Begins sending information to the ServerRouter through a PrintWriter. Accepts information from the ServerRouter
-     * through a BufferedReader.
-     *
-     * @param socket the socket that connects the client to the ServerRouter
-     * @param client the IP of the client (the device running this program)
-     * @param server the IP of the server (the device operating on the wav file)
-     * @param currentFile the file that is sent to the server for operation
-     * @throws IOException if handshake fails between client and server.
-     */
-    public static void startWavFileSession(Socket socket, String client, String server, File currentFile) throws IOException {
-        // Writers and readers for sending messages to and from the ServerRouter
-        Object[] writerAndReader = handshake(socket, client, server);
-        DataOutputStream toServerRouter = (DataOutputStream) writerAndReader[0];
-        DataInputStream fromServerRouter = (DataInputStream) writerAndReader[1];
-        String fromServer;
-
-        int serverResponseLength = fromServerRouter.readInt();
-        byte[] serverResponse = new byte[serverResponseLength];
-        fromServerRouter.readFully(serverResponse, 0, serverResponseLength);
-        fromServer = new String(serverResponse);
-
-        System.out.println("Server: " + fromServer);
-
-        FileInputStream fileInputStream = new FileInputStream(currentFile.getAbsolutePath());
-
-        String fileName = currentFile.getName();
-        byte[] fileNameBytes = fileName.getBytes();
-
-        byte[] fileContentBytes = new byte[(int)currentFile.length()];
-        fileInputStream.read(fileContentBytes);
-
-        toServerRouter.writeInt(fileNameBytes.length);
-        toServerRouter.write(fileNameBytes);
-
-        toServerRouter.writeInt(fileContentBytes.length);
-        toServerRouter.write(fileContentBytes);
-
-        serverResponseLength = fromServerRouter.readInt();
-        serverResponse = new byte[serverResponseLength];
-        fromServerRouter.readFully(serverResponse, 0, serverResponseLength);
-        fromServer = new String(serverResponse);
-
-        System.out.println("Server: " + fromServer);
-
-        toServerRouter.close();
-        fromServerRouter.close();
-
-    }
-
-    /**
-     * Begins sending information to the ServerRouter through a PrintWriter. Accepts information from the ServerRouter
-     * through a BufferedReader.
-     *
-     * @param socket the socket that connects the client to the ServerRouter
-     * @param client the IP of the client (the device running this program)
-     * @param server the IP of the server (the device operating on the mp4 file)
-     * @param currentFile the file that is sent to the server for operation
-     * @throws IOException if handshake fails between client and server.
-     */
-    public static void startMp4FileSession(Socket socket, String client, String server, File currentFile) throws IOException {
-        // Writers and readers for sending messages to and from the ServerRouter
-        Object[] writerAndReader = handshake(socket, client, server);
-        DataOutputStream toServerRouter = (DataOutputStream) writerAndReader[0];
-        DataInputStream fromServerRouter = (DataInputStream) writerAndReader[1];
-        String fromServer;
-
-        int serverResponseLength = fromServerRouter.readInt();
-        byte[] serverResponse = new byte[serverResponseLength];
-        fromServerRouter.readFully(serverResponse, 0, serverResponseLength);
-        fromServer = new String(serverResponse);
-
-        System.out.println("Server: " + fromServer);
-
-        FileInputStream fileInputStream = new FileInputStream(currentFile.getAbsolutePath());
-
-        String fileName = currentFile.getName();
-        byte[] fileNameBytes = fileName.getBytes();
-
-        byte[] fileContentBytes = new byte[(int)currentFile.length()];
-        fileInputStream.read(fileContentBytes);
-
-        toServerRouter.writeInt(fileNameBytes.length);
-        toServerRouter.write(fileNameBytes);
-
-        toServerRouter.writeInt(fileContentBytes.length);
-        toServerRouter.write(fileContentBytes);
-
-        serverResponseLength = fromServerRouter.readInt();
-        serverResponse = new byte[serverResponseLength];
-        fromServerRouter.readFully(serverResponse, 0, serverResponseLength);
-        fromServer = new String(serverResponse);
-
-        System.out.println("Server: " + fromServer);
-
-        toServerRouter.close();
-        fromServerRouter.close();
-
-
     }
 }

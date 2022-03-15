@@ -43,12 +43,16 @@ public class SThread extends Thread {
 			}
 
 			// loops through the routing table to find the destination
-			for (int i = 0; i < 10; i++) {
-				if (destination.equals((String) routingTable[i][0])){
-					outSocket = (Socket) routingTable[i][1]; // gets the socket for communication from the table
-					System.out.println("Found destination: " + destination);
+			boolean foundDestination = false;
+			for (Object[] route : routingTable) {
+				if (destination.equals((String) route[0])) {
+					foundDestination = true;
+					outSocket = (Socket) route[1]; // gets the socket for communication from the table
 					outTo = new DataOutputStream(outSocket.getOutputStream()); // assigns a writer
 				}
+			}
+			if (foundDestination) {
+				System.out.println("Found destination: " + destination);
 			}
 			int messageLength;
 			do {
