@@ -4,17 +4,17 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class TCPServerRouter2Part2 {
+public class TCPServerRouter2 {
     public static void main(String[] args) throws IOException {
-        Object [][] routingTable = new Object [10000][2]; // routing table
+        Object [][] routingTable = new Object [10][2]; // routing table
         int routerIndex = 0; // index in the routing table
 
         Socket clientSocket = null; // socket for the thread
-        final int PORT = 5555; // port number
+        final int PORT = Common.serverRouter2Port; // port number
         ServerSocket serverSocket = null; // server socket for accepting connections
         try {
             serverSocket = new ServerSocket(PORT);
-            System.out.println("ServerRouter is Listening on port: " + PORT);
+            System.out.println("ServerRouter is listening on port: " + PORT);
         } catch (IOException e) {
             System.err.println("Could not listen on port: " + PORT);
             System.exit(1);
@@ -24,7 +24,7 @@ public class TCPServerRouter2Part2 {
         while (true) {
             try {
                 clientSocket = serverSocket.accept();
-                SThreadPart2 clientThread = new SThreadPart2(routingTable, clientSocket, routerIndex); // creates a thread with a random port
+                SThread clientThread = new SThread(routingTable, clientSocket, routerIndex, PORT); // creates a thread with a random port
                 clientThread.start(); // starts the thread
                 routerIndex++; // increments the index
                 System.out.println("ServerRouter connected with Client/Server: " + clientSocket.getInetAddress().getHostAddress());
