@@ -30,7 +30,7 @@ public class TCPClientPart1 {
             }
             ArrayList<Long> timesForFile = new ArrayList<>();
             // Current file to be sent to the ServerRouter
-            File currentFile = new File("testFiles/" + filename);
+            File currentFile = new File("sendFiles/" + filename);
 
             // Connect to the ServerRouter through a Socket. Also, establish a writer and reader between the ServerRouter
             try {
