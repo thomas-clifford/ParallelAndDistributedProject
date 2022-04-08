@@ -6,7 +6,8 @@ import java.net.Socket;
 
 public class TCPServerRouter2 {
     public static void main(String[] args) throws IOException {
-        Object [][] routingTable = new Object [10][2]; // routing table
+        final int ROUTING_TABLE_SIZE = 100;
+        Object [][] routingTable = new Object [ROUTING_TABLE_SIZE][2]; // routing table
         int routerIndex = 0; // index in the routing table
 
         Socket clientSocket = null; // socket for the thread
@@ -26,6 +27,9 @@ public class TCPServerRouter2 {
                 clientSocket = serverSocket.accept();
                 SThread clientThread = new SThread(routingTable, clientSocket, routerIndex, PORT); // creates a thread with a random port
                 clientThread.start(); // starts the thread
+                do {
+                    routerIndex = (routerIndex + 1) % ROUTING_TABLE_SIZE;
+                } while (routingTable[routerIndex] == null);
                 routerIndex++; // increments the index
                 System.out.println("ServerRouter connected with Client/Server: " + clientSocket.getInetAddress().getHostAddress());
             } catch (IOException e) {

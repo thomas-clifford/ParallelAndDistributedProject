@@ -49,10 +49,13 @@ public class SThread extends Thread {
 		}
 
 		// Search routing table for destination peer.
+		int destinationIndex = -1;
 		boolean foundDestination = false;
 		for (Object[] route : routingTable) {
+			destinationIndex++;
 			if (destination.equals((String) route[0])) {
 				foundDestination = true;
+				break;
 			}
 		}
 
@@ -73,6 +76,8 @@ public class SThread extends Thread {
 				data = ("found peer at: " + destination).getBytes();
 			}
 			Common.sendData(this.out, data);
+			routingTable[ind] = new Object[routingTable[ind].length];
+			routingTable[destinationIndex] = new Object[routingTable[destinationIndex].length];
 		} else {
 			if (isServerRouter) {
 				System.out.println("Could not find destination peer. Telling other server the peer is not connected.");
