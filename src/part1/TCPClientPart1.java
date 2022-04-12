@@ -14,7 +14,7 @@ public class TCPClientPart1 {
         Socket socket = null;
         String client = InetAddress.getLocalHost().getHostAddress();
         String serverRouterIP = "10.0.0.116";
-        String serverIP = "10.0.0.114";
+        String serverIP = "10.0.0.8";
         int port = 5555;
 
         // Variables for recording times in a csv

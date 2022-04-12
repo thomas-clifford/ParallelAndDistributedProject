@@ -7,7 +7,7 @@ public class TCPServerPart1 {
     public static void main(String[] args) throws IOException {
         // Basic socket information for TCP connection
         Socket socket = null;
-        String serverRouterIP = "10.0.0.116";
+        String serverRouterIP = "10.0.0.8";
         String clientIP = "10.0.0.116";
         int port = 5555;
 
@@ -16,7 +16,7 @@ public class TCPServerPart1 {
         DataInputStream fromServerRouter = null;
 
         // For every file sent to the server, connect to ServerRouter, accept message, return message, and close connection.
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 10; i++) {
             // Connect to the ServerRouter through a Socket. Also establish a writer and reader between the ServerRouter.
             try {
                 socket = new Socket(serverRouterIP, port);

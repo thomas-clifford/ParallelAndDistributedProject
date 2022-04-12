@@ -6,7 +6,7 @@ import java.io.IOException;
 
 public class Common {
     public static String serverRouter1IP = "10.0.0.116";
-    public static String serverRouter2IP = "10.0.0.116";
+    public static String serverRouter2IP = "10.0.0.92";
     public static int serverRouter1Port = 5555;
     public static int serverRouter2Port = 5556;
 

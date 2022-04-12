@@ -25,13 +25,14 @@ public class TCPServerRouter1 {
         while (true) {
             try {
                 clientSocket = serverSocket.accept();
+                System.out.println("ServerRouter connected with Peer/ServerRouter: " + clientSocket.getInetAddress().getHostAddress());
                 SThread clientThread = new SThread(routingTable, clientSocket, routerIndex, PORT); // creates a thread with a random port
                 clientThread.start(); // starts the thread
                 do {
                     routerIndex = (routerIndex + 1) % ROUTING_TABLE_SIZE;
-                } while (routingTable[routerIndex] == null);                System.out.println("ServerRouter connected with Client/Server: " + clientSocket.getInetAddress().getHostAddress());
+                } while (routingTable[routerIndex] == null);
             } catch (IOException e) {
-                System.err.println("Client/Server failed to connect.");
+                System.err.println("Peer/ServerRouter failed to connect.");
                 // closing connections
                 clientSocket.close();
                 serverSocket.close();
