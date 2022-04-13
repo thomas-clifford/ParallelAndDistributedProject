@@ -1,3 +1,4 @@
-sample3.wav
+textFile1MB.txt
+textFile25MB.txt
+wavFile200MB.wav
 file.txt
-testVideo.mp4

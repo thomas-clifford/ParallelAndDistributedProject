@@ -7,6 +7,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class Peer {
     int defaultPeerPort = 9876;
@@ -78,13 +79,13 @@ public class Peer {
         Socket peerSocket = null;
         if (foundDestination) {
             waitingPeer = false;
-            System.out.println("Found destination peer. Attempting to establish connection at: " + this.destinationIP + ':' + this.defaultPeerPort);
+            System.out.println("Found destination peer. Attempting to establish connection at: " + this.destinationIP + ':' + this.defaultPeerPort + "\n");
             peerSocket = new Socket(this.destinationIP, this.defaultPeerPort);
         } else {
             waitingPeer = true;
             System.out.println("Destination peer not online. Waiting until they connect.");
             ServerSocket serverSocket = new ServerSocket(this.defaultPeerPort);
-            System.out.println("Peer is listening on port: " + this.defaultPeerPort);
+            System.out.println("Peer is listening on port: " + this.defaultPeerPort + "\n");
             peerSocket = serverSocket.accept();
         }
         DataInputStream dis = new DataInputStream(peerSocket.getInputStream());
@@ -93,7 +94,7 @@ public class Peer {
     }
 
     /**
-     * The Peers will communicate through the method. If this peer was waiting for the other peer to connect,
+     * The Peers will communicate through this method. If this peer was waiting for the other peer to connect,
      * this peer will send data first and vice versa.
      * @param dis Data input stream used to receive data from the other peer.
      * @param dos Data output stream used to send data to the other peer.
@@ -101,53 +102,110 @@ public class Peer {
      */
     public void communicate(DataInputStream dis, DataOutputStream dos) throws IOException {
         HashMap<String, ArrayList<Long>> times = new HashMap<>();
-        for (String filename : files) {
-            if (!times.containsKey(filename)) {
-                times.put(filename, new ArrayList<Long>());
-            }
-
-            // Current file to be sent to the ServerRouter
-            File currentFile = new File("sendFiles/" + filename);
-
-            System.out.println("Sending file, " + filename + " to ServerRouter to download and return a success message");
-
-            // Get the content of the file the peer is sending
-            FileInputStream fileInputStream = new FileInputStream(currentFile.getAbsolutePath());
-            byte[] fileContentBytes = new byte[(int)currentFile.length()];
-            fileInputStream.read(fileContentBytes);
-
             // If this peer was waiting for the other peer to connect, send data then accept data; otherwise, accept data then send data.
-            long start = System.currentTimeMillis();
+            long start = 0;
+            long totalTime = 0;
+            FileOutputStream fileOutputStream = null;
+            int outgoingFileIndex = 0;
+            int incomingFileIndex;
+            byte[] fileContentBytes = new byte[0];
             if (waitingPeer) {
-                // Begin sending the file's name and data to the Peer respectively
-                Common.sendData(dos, filename.getBytes());
-                byte[] data = Common.getData(dis);
-                String incomingFileName = new String(data);
-                System.out.println("File incoming from peer: " + incomingFileName);
-                File downloadFile = new File("receiveFiles/" + incomingFileName);
-                FileOutputStream fileOutputStream = new FileOutputStream(downloadFile);
-                Common.sendData(dos, fileContentBytes);
-                fileOutputStream.write(Common.getData(dis));
+                dos.writeInt(files.size());
+                incomingFileIndex = dis.readInt();
             } else {
-                // Begin receiving files from the peer
-                byte[] data = Common.getData(dis);
-                String incomingFileName = new String(data);
-                System.out.println("File incoming from peer: " + incomingFileName);
-                File downloadFile = new File("receiveFiles/" + incomingFileName);
-                FileOutputStream fileOutputStream = new FileOutputStream(downloadFile);
-                Common.sendData(dos, filename.getBytes());
-                fileOutputStream.write(Common.getData(dis));
-                Common.sendData(dos, fileContentBytes);
+                incomingFileIndex = dis.readInt();
+                dos.writeInt(files.size());
             }
-
-            // Record the time it took to send and receive the file
-            long totalTime = System.currentTimeMillis() - start;
-            times.get(filename).add(totalTime);
-            System.out.println("Total Transfer Time: " + totalTime + " milliseconds\n");
-
-        }
+            do {
+                if (waitingPeer) {
+                    // Send outgoing file's name
+                    if (outgoingFileIndex < files.size()) {
+                        if (!times.containsKey(files.get(outgoingFileIndex))) {
+                            times.put(files.get(outgoingFileIndex), new ArrayList<Long>());
+                        }
+                        File currentFile = new File("sendFiles/" + files.get(outgoingFileIndex));
+                        FileInputStream fileInputStream = new FileInputStream(currentFile.getAbsolutePath());
+                        fileContentBytes = new byte[(int) currentFile.length()];
+                        fileInputStream.read(fileContentBytes);
+                        pauseForPeer();
+                        Common.sendData(dos, files.get(outgoingFileIndex).getBytes());
+                    }
+                    // Get incoming file's name
+                    if (incomingFileIndex > 0) {
+                        byte[] data = Common.getData(dis);
+                        String incomingFileName = new String(data);
+                        System.out.println("File incoming from peer: " + incomingFileName);
+                        File downloadFile = new File("receiveFiles/" + incomingFileName);
+                        fileOutputStream = new FileOutputStream(downloadFile);
+                    }
+                    // Send outgoing file's contents
+                    if (outgoingFileIndex < files.size()) {
+                        start = System.currentTimeMillis();
+                        System.out.println("Sending file, " + files.get(outgoingFileIndex) + ", to Peer to download.");
+                        Common.sendData(dos, fileContentBytes);
+                        totalTime = System.currentTimeMillis() - start;
+                        // Record the time it took to send the file
+                        times.get(files.get(outgoingFileIndex)).add(totalTime);
+                        System.out.println("Total Send Time: " + totalTime + " milliseconds\n");
+                        outgoingFileIndex++;
+                    }
+                    // Get incoming file's contents
+                    if (incomingFileIndex > 0) {
+                        fileOutputStream.write(Common.getData(dis));
+                        incomingFileIndex--;
+                    }
+                } else {
+                    // Get incoming file's name
+                    if (incomingFileIndex > 0) {
+                        byte[] data = Common.getData(dis);
+                        String incomingFileName = new String(data);
+                        System.out.println("File incoming from peer: " + incomingFileName);
+                        File downloadFile = new File("receiveFiles/" + incomingFileName);
+                        fileOutputStream = new FileOutputStream(downloadFile);
+                    }
+                    // Send outgoing file's name
+                    if (outgoingFileIndex < files.size()) {
+                        if (!times.containsKey(files.get(outgoingFileIndex))) {
+                            times.put(files.get(outgoingFileIndex), new ArrayList<Long>());
+                        }
+                        File currentFile = new File("sendFiles/" + files.get(outgoingFileIndex));
+                        FileInputStream fileInputStream = new FileInputStream(currentFile.getAbsolutePath());
+                        fileContentBytes = new byte[(int) currentFile.length()];
+                        fileInputStream.read(fileContentBytes);
+                        pauseForPeer();
+                        Common.sendData(dos, files.get(outgoingFileIndex).getBytes());
+                    }
+                    // Get incoming file's contents
+                    if (incomingFileIndex > 0) {
+                        fileOutputStream.write(Common.getData(dis));
+                        incomingFileIndex--;
+                    }
+                    // Send outgoing file's contents.
+                    if (outgoingFileIndex < files.size()) {
+                        start = System.currentTimeMillis();
+                        System.out.println("Sending file, " + files.get(outgoingFileIndex) + ", to Peer to download.");
+                        Common.sendData(dos, fileContentBytes);
+                        totalTime = System.currentTimeMillis() - start;
+                        // Record the time it took to send the file
+                        times.get(files.get(outgoingFileIndex)).add(totalTime);
+                        System.out.println("Total Send Time: " + totalTime + " milliseconds\n");
+                        outgoingFileIndex++;
+                    }
+                }
+            } while (outgoingFileIndex < files.size() || incomingFileIndex > 0);
         // Organize the file times in a CSV file
         createCsvFile(times);
+    }
+
+    /**
+     * Pauses the Java process. This gives the other peer to catch up and remain in sync with this peer.
+     */
+    public static void pauseForPeer() {
+        try {
+            TimeUnit.SECONDS.sleep(3);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     /**

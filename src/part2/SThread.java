@@ -13,17 +13,17 @@ public class SThread extends Thread {
 	private int ind; // index in the routing table
 	private boolean isServerRouter;
 	private int serverRouterPort;
-	private Socket toClient;
+	private Socket toPeer;
 
 	// Constructor
-	SThread(Object [][] Table, Socket toClient, int index, int port) throws IOException {
-		out = new DataOutputStream(toClient.getOutputStream());
-		in = new DataInputStream(toClient.getInputStream());
+	SThread(Object [][] Table, Socket toPeer, int index, int port) throws IOException {
+		out = new DataOutputStream(toPeer.getOutputStream());
+		in = new DataInputStream(toPeer.getInputStream());
 		routingTable = Table;
-		addr = toClient.getInetAddress().getHostAddress();
+		addr = toPeer.getInetAddress().getHostAddress();
 		ind = index;
 		serverRouterPort = port;
-		this.toClient = toClient;
+		this.toPeer = toPeer;
 	}
 
 	// Run method (will run for each machine that connects to the ServerRouter)
@@ -57,12 +57,6 @@ public class SThread extends Thread {
 				foundDestination = true;
 				break;
 			}
-		}
-
-		// Only add the connected machine's IP address to the routing table if it is not another Server Router.
-		if (!isServerRouter) {
-			routingTable[ind][0] = addr; // IP addresses
-			routingTable[ind][1] = this.toClient; // sockets for communication
 		}
 
 		// If the other peer is found within the peer's network, connect them; otherwise, ask the other network's server router if the peer exists.
@@ -119,9 +113,11 @@ public class SThread extends Thread {
 			data = Common.getData(dis);
 			String returnMessage = new String(data);
 
-			// If the other SR found the peer, return success message; otherwise, tell the peer to wait.
+			// If the other SR found the peer, return success message; otherwise, tell the peer to wait and save its information to the routing table.
 			if (returnMessage.equals("could not find destination peer.")) {
 				System.out.println("Did not find destination peer. Telling peer to wait.");
+				routingTable[ind][0] = addr; // IP addresses
+				routingTable[ind][1] = this.toPeer; // sockets for communication
 				data = ("did not find peer at: " + destination).getBytes();
 			} else {
 				System.out.println("Found destination peer. Telling peer to connect.");
